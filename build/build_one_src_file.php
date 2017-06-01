@@ -6,7 +6,9 @@ function addSrc($Name, $Target) {
   $File = fopen($Name, "r");
   try {
     while (! feof($File)) {
-      fwrite($Target, fread($File, 102400));
+      $buffer = fread($File, 102400);
+      $buffer = str_replace(['<?php', '?>'], ['', ''], $buffer);
+      fwrite($Target, $buffer);
     }
   }
   finally {
@@ -18,11 +20,9 @@ $SrcDir = realpath(dirname(__FILE__) . "/../src");
 $DistDir = realpath(dirname(__FILE__) . "/../dist/one_src_file");
 $TargetFile = "$DistDir/phosphor7.php";
 
-
-
 $Target = fopen($TargetFile, "w");
 try {
-  fputs($Target,'<?php define("PHOSPHOR7_EXTERNAL_REQUIRE_MANAGEMENT", 1); ?>');
+  fputs($Target, '<?php define("PHOSPHOR7_EXTERNAL_REQUIRE_MANAGEMENT", 1);');
 
   addSrc("$SrcDir/p7_global.php", $Target);
   addSrc("$SrcDir/p7_ctypes.php", $Target);
@@ -35,6 +35,8 @@ try {
   addSrc("$SrcDir/s7_peer.php", $Target);
   addSrc("$SrcDir/s7_micro_client.php", $Target);
   addSrc("$SrcDir/phosphor7.php", $Target);
+
+  fputs($Target, PHP_EOL . '?>');
 }
 finally {
   fclose($Target);
