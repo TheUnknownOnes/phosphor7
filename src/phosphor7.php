@@ -264,7 +264,7 @@ class S7 {
    *  @param int Value
    */
   public static function SetWordAt(&$Buffer, $Pos, $Value) {
-    self::SetUIntAt(Buffer, Pos, Value);
+    self::SetUIntAt($Buffer, $Pos, $Value);
   }
 
 
@@ -514,7 +514,7 @@ class S7 {
             $Value->format("i") * 60 +
             $Value->format("s")) * 10**9 +
            intval($Value->format("u") * 1000);
-      self::SetLIntAt(Buffer, Pos, (Value.Ticks-bias) * 100);
+      self::SetLIntAt($Buffer, $Pos, ($Value.Ticks-bias) * 100);
   }
 
 
