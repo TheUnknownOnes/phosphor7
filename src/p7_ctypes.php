@@ -57,6 +57,7 @@ function memcpy(CVariable $Destination, CVariable $Source, $Num) {
 function memset(CVariable $Destination, $Value, $Num) {
   $Bytes = str_repeat(chr($Value), $Num);
   $Destination->readFromBytes($Bytes);
+  $Destination->readFromBytes($Bytes);
 }
 
 abstract class CSimpleVariable extends CVariable {
