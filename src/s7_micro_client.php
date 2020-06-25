@@ -417,6 +417,7 @@ class TSnap7MicroClient extends TSnap7Peer {
       $ReqParams->writeToBytes($Bytes);
       $this->PDU->Payload->readFromBytes($Bytes);
       $Result = $this->isoExchangeBuffer($Buffer,$IsoSize);
+
       // Get Data
       if ($Result==0) {  // 1St level Iso
         $Bytes = $this->PDU->Payload->getAsBytes();
@@ -449,7 +450,176 @@ class TSnap7MicroClient extends TSnap7Peer {
     return $Result;
   }
 
-  //TODO: private int opWriteArea();
+    private function opWriteArea()
+    {
+        $ReqParams = null; // PReqFunWriteParams
+        $ReqData = null; // PReqFunWriteDataItem // only 1 item for WriteArea Function
+        $ResParams = null;// PResFunWrite
+        $Answer = null; // PS7ResHeader23
+        $RPSize = null; // word // $ReqParams size
+        $RHSize = null; // word // Request headers size
+        $First = true; // bool  = true
+        $Address = null; // int
+        $IsoSize = null; // int
+        $WordSize = null; // int
+        $Size = null; // word
+        $Offset = 0; // uintptr_t
+        $Start = null; // int // where we are starting from for this telegram
+        $MaxElements = null; // int // Max elements that we can transfer in a PDU
+        $NumElements = null; // word // Num of elements that we are asking for this telegram
+        $TotElements = null;// int // Total elements requested
+        $Result = null; // int
+
+        $WordSize = $this->DataSizeByte($this->Job->WordLen); // The size in bytes of an element that we are pushing
+        if ($WordSize == 0)
+            return errCliInvalidWordLen;
+        // First check : params bounds
+        if (($this->Job->Number < 0) || ($this->Job->Number > 65535) || ($this->Job->Start < 0) || ($this->Job->Amount < 1))
+            return errCliInvalidParams;
+        // Second check : transport size
+        if (($this->Job->WordLen == S7WLBit) && ($this->Job->Amount > 1))
+            return errCliInvalidTransportSize;
+
+        $RHSize = TS7ReqHeader::SIZE +        // Request header
+                    2 +                       // FunWrite+ItemCount (of TReqFunWriteParams)
+                    TReqFunWriteItem::SIZE +  // 1 item reference
+                    4;                        // ReturnCode+TransportSize+DataLength
+        $RPSize = TReqFunWriteItem::SIZE + 2;
+
+        // Setup pointers (note : PDUH_out and PDU.Payload are the same pointer)
+        $ReqParams = new PReqFunWriteParams();
+        $ReqData = new PReqFunWriteDataItem(); // 2 = FunWrite+ItemsCount
+
+        // Each packet cannot exceed the PDU length (in bytes) negotiated, and moreover
+        // we must ensure to transfer a "finite" number of item per PDU
+        $MaxElements = ($this->PDULength - $RHSize) / $WordSize;
+        $TotElements = $this->Job->Amount;
+        $Start = $this->Job->Start;
+
+        while (($TotElements > 0) && ($Result == 0)) {
+            $NumElements = $TotElements;
+            if ($NumElements > $MaxElements)
+                $NumElements = $MaxElements;
+
+            //$Source=pbyte($this->Job->pData)+$Offset;
+
+            $Size = $NumElements * $WordSize;
+            $this->PDUH_out->P = 0x32;                    // Always 0x32
+            $this->PDUH_out->PDUType = PduType_request;   // 0x01
+            $this->PDUH_out->AB_EX = 0x0000;              // Always 0x0000
+            $this->PDUH_out->Sequence = $this->GetNextWord();    // AutoInc
+            $this->PDUH_out->ParLen = $this->SwapWord($RPSize); // 14 bytes params
+            $this->PDUH_out->DataLen = $this->SwapWord($Size + 4);
+
+            $ReqParams->FunWrite = pduFuncWrite;    // 0x05
+            $ReqParams->ItemsCount = 1;
+            $ReqParams->Items[0]->ItemHead[0] = 0x12;
+            $ReqParams->Items[0]->ItemHead[1] = 0x0A;
+            $ReqParams->Items[0]->ItemHead[2] = 0x10;
+            $ReqParams->Items[0]->TransportSize = $this->Job->WordLen;
+            $ReqParams->Items[0]->Length = $this->SwapWord($NumElements);
+            $ReqParams->Items[0]->Area = $this->Job->Area;
+            if ($this->Job->Area == S7AreaDB)
+                $ReqParams->Items[0]->DBNumber = $this->SwapWord($this->Job->Number);
+            else
+                $ReqParams->Items[0]->DBNumber = 0x0000;
+
+
+            // Adjusts the offset
+            if (($this->Job->WordLen == S7WLBit) || ($this->Job->WordLen == S7WLCounter) || ($this->Job->WordLen == S7WLTimer))
+                $Address = $Start;
+            else
+                $Address = $Start * 8;
+
+            $ReqParams->Items[0]->Address[2] = $Address & 0x000000FF;
+            $Address = $Address >> 8;
+            $ReqParams->Items[0]->Address[1] = $Address & 0x000000FF;
+            $Address = $Address >> 8;
+            $ReqParams->Items[0]->Address[0] = $Address & 0x000000FF;
+
+            $ReqData->ReturnCode = 0x00;
+
+            switch ($this->Job->WordLen) {
+                case S7WLBit:
+                    $ReqData->TransportSize = TS_ResBit;
+                    break;
+                case S7WLInt:
+                case S7WLDInt:
+                    $ReqData->TransportSize = TS_ResInt;
+                    break;
+                case S7WLReal:
+                    $ReqData->TransportSize = TS_ResReal;
+                    break;
+                case S7WLChar   :
+                case S7WLCounter:
+                case S7WLTimer:
+                    $ReqData->TransportSize = TS_ResOctet;
+                    break;
+                default:
+                    $ReqData->TransportSize = TS_ResByte;
+                    break;
+            };
+
+            if (($ReqData->TransportSize != TS_ResOctet) && ($ReqData->TransportSize != TS_ResReal) && ($ReqData->TransportSize != TS_ResBit))
+                $ReqData->DataLength = $this->SwapWord($Size * 8);
+            else
+                $ReqData->DataLength = $this->SwapWord($Size);
+
+            // This BELOW might need improvement !!
+            $data = $this->Job->pData;
+
+            $data = str_split($data,2);
+
+            foreach ($data as $key => $byte) {
+                $data[$key] = hexdec($byte);
+            }
+            $ReqData->Data = $data;
+            // This ABOVE might need improvement !!
+
+
+            $IsoSize = $RHSize + $Size;
+            $Buffer = null;
+            $Bytes = "";
+
+            // preparedata
+            $this->PDUH_out->writeToBytes($Bytes);
+            $ReqParams->writeToBytes($Bytes);
+            $ReqData->writeToBytes($Bytes, 24);
+
+            // send data
+            $this->PDU->Payload->readFromBytes($Bytes);
+            $Result = $this->isoExchangeBuffer($Buffer, $IsoSize);
+
+            // receive data
+            if ($Result == 0) {  // 1St level Iso
+                $Bytes = $this->PDU->Payload->getAsBytes();
+                $Answer = new PS7ResHeader23();
+                $Answer->readFromBytes($Bytes);
+                $ResParams = new PResFunReadParams();
+                $ResParams->readFromBytes($Bytes, TS7ResHeader23::SIZE);
+                $ResData = new PResFunReadItem();
+                $ResData->readFromBytes($Bytes, TS7ResHeader23::SIZE + TResFunReadParams::SIZE);
+                $Size = 0;
+                // Item level error
+                if ($ResData->ReturnCode == 0xFF) { // <-- 0xFF means Result OK
+                    // Calcs data size in bytes
+                    $Size = $this->SwapWord($ResData->DataLength);
+                    // Adjust Size in accord of TransportSize
+                    if (($ResData->TransportSize != TS_ResOctet) && ($ResData->TransportSize != TS_ResReal) && ($ResData->TransportSize != TS_ResBit))
+                        $Size = $Size >> 3;
+                    $this->Job->pData .= substr($ResData->Data->getAsBytes(), 0, $Size);
+                } else
+                    $Result = $this->CpuError($ResData->ReturnCode);
+                $Offset += $Size;
+                $First = false;
+                //--------------------------------------------------------------------
+                $TotElements -= $NumElements;
+                $Start += $NumElements * $WordSize;
+            }
+            return $Result;
+        }
+    }
+
   //TODO: private int opReadMultiVars();
   //TODO: private int opWriteMultiVars();
   //TODO: private int opListBlocks();
@@ -749,7 +919,22 @@ class TSnap7MicroClient extends TSnap7Peer {
       return $this->SetError(errCliJobPending);
   }
 
-  //TODO: public int WriteArea(int Area, int DBNumber, int Start, int Amount, int WordLen, void * pUsrData);
+  public function WriteArea($Area, $DBNumber, $Start, $Amount, $WordLen, &$pUsrData){
+      if (! $this->Job->Pending) {
+          $this->Job->Pending  = true;
+          $this->Job->Op       = s7opWriteArea;
+          $this->Job->Area     = $Area;
+          $this->Job->Number   = $DBNumber;
+          $this->Job->Start    = $Start;
+          $this->Job->Amount   = $Amount;
+          $this->Job->WordLen  = $WordLen;
+          $this->Job->pData    = &$pUsrData;
+          $this->JobStart     = SysGetTick();
+          return $this->PerformOperation();
+      }
+      else
+          return $this->SetError(errCliJobPending);
+  }
   //TODO: public int ReadMultiVars(PS7DataItem Item, int ItemsCount);
   //TODO: public int WriteMultiVars(PS7DataItem Item, int ItemsCount);
   // Data I/O Helper functions
@@ -765,7 +950,17 @@ class TSnap7MicroClient extends TSnap7Peer {
     return $this->ReadArea(S7AreaDB, $DBNumber, $Start, $Size, S7WLByte, $pUsrData);
   }
 
-  //TODO: public int DBWrite(int DBNumber, int Start, int Size, void * pUsrData);
+    /**
+     *  @param int DBNumber
+     *  @param int Start
+     *  @param int Size
+     *  @param CVariable pUsrData
+     *  @return int
+     */
+    public function DBWrite($DBNumber, $Start, $Size, &$pUsrData) {
+        return $this->WriteArea(S7AreaDB, $DBNumber, $Start, $Size, S7WLByte, $pUsrData);
+    }
+	
   //TODO: public int MBRead(int Start, int Size, void * pUsrData);
   //TODO: public int MBWrite(int Start, int Size, void * pUsrData);
   //TODO: public int EBRead(int Start, int Size, void * pUsrData);
