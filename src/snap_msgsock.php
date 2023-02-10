@@ -486,8 +486,8 @@ class TMsgSocket extends TSnapBase {
 	if(! (is_resource($this->FSocket) || $this->FSocket instanceof Socket))
 		return false;
 
-    $tv_usec = ($Timeout % 1000) * 1000;
-    $tv_sec = $Timeout / 1000;
+    $tv_usec = intval(($Timeout % 1000) * 1000);
+    $tv_sec = intval($Timeout / 1000);
 
     $FDset[] = $this->FSocket;
 
@@ -751,8 +751,8 @@ class TMsgSocket extends TSnapBase {
               $rset[] = $this->FSocket;
               $wset = $rset;
               $eset = null;
-              $tv_sec = $this->PingTimeout / 1000;
-              $tv_usec = ($this->PingTimeout % 1000) * 1000;
+              $tv_sec = intval($this->PingTimeout / 1000);
+              $tv_usec = intval(($this->PingTimeout % 1000) * 1000);
 
               $n = socket_select($rset, $wset, $eset, $tv_sec, $tv_usec);
               if ($n == 0) {
