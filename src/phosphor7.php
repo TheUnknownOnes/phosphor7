@@ -507,15 +507,15 @@ class S7 {
    *  @param DateTime Value
    *  @return mixed
    */
-  public static function SetLDTAt(&$Buffer, $Pos, DateTime $Value) {
-    $Days = DateTime::createFromFormat("!", "")->diff($Value)->days;
-    $Val = ($Days * 24 * 60 * 60 +
-            $Value->format("G") * 60 * 60 +
-            $Value->format("i") * 60 +
-            $Value->format("s")) * 10**9 +
-           intval($Value->format("u") * 1000);
-      self::SetLIntAt($Buffer, $Pos, ($Value.Ticks-bias) * 100);
-  }
+//  public static function SetLDTAt(&$Buffer, $Pos, DateTime $Value) {
+//    $Days = DateTime::createFromFormat("!", "")->diff($Value)->days;
+//    $Val = ($Days * 24 * 60 * 60 +
+//            $Value->format("G") * 60 * 60 +
+//            $Value->format("i") * 60 +
+//            $Value->format("s")) * 10**9 +
+//           intval($Value->format("u") * 1000);
+//      self::SetLIntAt($Buffer, $Pos, ($Value.$Ticks-$bias) * 100);  // << TODO define $Ticks and $bias
+//  }
 
 
   //Get/Set DTL (S71200/1500 Date and Time)
