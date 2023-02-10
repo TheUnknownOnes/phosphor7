@@ -750,7 +750,7 @@ class TIsoTcpSocket extends TMsgSocket {
         {
           ++$NumParts;
           $Offset += $Received;
-          if ($NumParts>IsoMaxFragments)
+          if ($NumParts>$this->IsoMaxFragments)
             $Result =$this->SetIsoError(errIsoTooManyFragments);
         }
       }
@@ -800,33 +800,33 @@ class TIsoTcpSocket extends TMsgSocket {
     $Info = null; //PIsoHeaderInfo
     $IsoLen = null; //u_int
 
-    $Info=PIsoHeaderInfo::cast(pPDU);
-    $IsoLen=$this->PDUSize(Info);
+    $Info=PIsoHeaderInfo::cast($pPDU);
+    $IsoLen=$this->PDUSize($Info);
 
     // Check for empty fragment : size of PDU = size of header and nothing else
     if ($IsoLen==DataHeaderSize ) {
         // We don't need to check the EoT flag since the PDU is empty....
-        $PduKind=pkEmptyFragment;
+        $PduKind=TPDUKind::pkEmptyFragment;
         return;
     }
     // Check for invalid packet : size of PDU < size of header
     if ($IsoLen<DataHeaderSize ) {
-        $PduKind=pkInvalidPDU;
+        $PduKind=TPDUKind::pkInvalidPDU;
         return;
     }
     // Here IsoLen>DataHeaderSize : check the PDUType
     switch ($Info->PDUType) {
         case pdu_type_CR:
-            $PduKind=pkConnectionRequest;
+            $PduKind=TPDUKind::pkConnectionRequest;
             break;
         case pdu_type_DR:
-            $PduKind=pkDisconnectRequest;
+            $PduKind=TPDUKind::pkDisconnectRequest;
             break;
         case pdu_type_DT:
-            $PduKind=pkValidData;
+            $PduKind=TPDUKind::pkValidData;
             break;
         default:
-            $PduKind=pkUnrecognizedType;
+            $PduKind=TPDUKind::pkUnrecognizedType;
     }
   }
 }
