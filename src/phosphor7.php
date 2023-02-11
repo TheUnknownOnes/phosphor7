@@ -443,7 +443,7 @@ class S7 {
     $Val = self::GetDIntAt($Buffer, $Pos);
     $Sec = intval($Val / 1000);
     $USec = ($Val % 1000) * 1000;
-    return DateTime::createFromFormat("U.u", "${Sec}.${USec}");
+    return DateTime::createFromFormat("U.u", "{$Sec}.{$USec}");
   }
 
   /**
@@ -452,10 +452,10 @@ class S7 {
    *  @param DateTime Value
    */
   public static function SetTODAt(&$Buffer, $Pos, DateTime $Value) {
-    $Val = ($Value->format("G") * 60 * 60 +
-            $Value->format("i") * 60 +
-            $Value->format("s")) * 1000 +
-           intval($Value->format("u") / 1000);
+    $Val = (($Value->format("G") * 60 * 60) +
+            ($Value->format("i") * 60) +
+            ($Value->format("s")) * 1000 +
+           intval($Value->format("u") / 1000));
 
     self::SetDIntAt($Buffer, $Pos, $Val);
   }
@@ -474,7 +474,7 @@ class S7 {
     $Val = self::GetLIntAt($Buffer, $Pos);
     $Sec = intval($Val / (10**9));
     $USec = ($Val % (10**9)) / 1000;
-    return DateTime::createFromFormat("U.u", "${Sec}.${USec}");
+    return DateTime::createFromFormat("U.u", "{$Sec}.{$USec}");
   }
 
   /**
@@ -483,10 +483,10 @@ class S7 {
    *  @param DateTime Value
    */
   public static function SetLTODAt(&$Buffer, $Pos, DateTime $Value) {
-    $Val = ($Value->format("G") * 60 * 60 +
-            $Value->format("i") * 60 +
-            $Value->format("s")) * 10**9 +
-           intval($Value->format("u") * 1000);
+    $Val = (($Value->format("G") * 60 * 60) +
+            ($Value->format("i") * 60) +
+            ($Value->format("s") * 10**9) +
+           intval($Value->format("u") * 1000));
     self::SetLIntAt($Buffer, $Pos, $Val);
   }
 
@@ -507,15 +507,15 @@ class S7 {
    *  @param DateTime Value
    *  @return mixed
    */
-  public static function SetLDTAt(&$Buffer, $Pos, DateTime $Value) {
-    $Days = DateTime::createFromFormat("!", "")->diff($Value)->days;
-    $Val = ($Days * 24 * 60 * 60 +
-            $Value->format("G") * 60 * 60 +
-            $Value->format("i") * 60 +
-            $Value->format("s")) * 10**9 +
-           intval($Value->format("u") * 1000);
-      self::SetLIntAt($Buffer, $Pos, ($Value.Ticks-bias) * 100);
-  }
+//  public static function SetLDTAt(&$Buffer, $Pos, DateTime $Value) {
+//    $Days = DateTime::createFromFormat("!", "")->diff($Value)->days;
+//    $Val = ($Days * 24 * 60 * 60 +
+//            $Value->format("G") * 60 * 60 +
+//            $Value->format("i") * 60 +
+//            $Value->format("s")) * 10**9 +
+//           intval($Value->format("u") * 1000);
+//      self::SetLIntAt($Buffer, $Pos, ($Value.$Ticks-$bias) * 100);  // << TODO define $Ticks and $bias
+//  }
 
 
   //Get/Set DTL (S71200/1500 Date and Time)

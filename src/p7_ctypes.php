@@ -415,18 +415,20 @@ class CArray extends CVariable implements Countable, ArrayAccess {
 		return $BytesProcessedTotal;
 	}
 
-  public function count() {
+  public function count(): int
+  {
     return count($this->Items);
   }
 
-  public function offsetExists($offset) {
+  public function offsetExists($offset): bool
+  {
     if (is_int($offset))
       return array_key_exists($offset, $this->Items);
     else
       throw new Exception("Invalid offset");
   }
 
-  public function &offsetGet($offset) {
+  #[ReturnTypeWillChange] public function &offsetGet($offset) {
     if ($this->offsetExists($offset)) {
       $Item = $this->Items[$offset];
       $RetVal = null;
@@ -442,7 +444,7 @@ class CArray extends CVariable implements Countable, ArrayAccess {
     return $RetVal;
   }
 
-  public function offsetSet($offset, $value) {
+  #[ReturnTypeWillChange] public function offsetSet($offset, $value) {
     if ($this->offsetExists($offset)) {
       $Item = $this->Items[$offset];
 
@@ -455,7 +457,7 @@ class CArray extends CVariable implements Countable, ArrayAccess {
     }
   }
 
-  public function offsetUnset($offset) {
+  #[ReturnTypeWillChange] public function offsetUnset($offset) {
   }
 }
 

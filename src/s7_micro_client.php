@@ -298,7 +298,7 @@ class TSnap7Job {
   public $IParam = 0;     // Used for full upload and CopyRamToRom extended timeout
 }
 
-class TSnap7MicroClient extends TSnap7Peer {
+#[AllowDynamicProperties] class TSnap7MicroClient extends TSnap7Peer {
   /**
    *  @param word SiemensTime
    *  @param string PTime
@@ -860,20 +860,20 @@ class TSnap7MicroClient extends TSnap7Peer {
 	 *  @param int Slot
 	 *  @return int
 	 */
-	public function ConnectTo($RemAddress, $Rack, $Slot) {
-    $RemoteTSAP = ($this->ConnectionType<<8)+($Rack*0x20)+$Slot;
-    $this->SetConnectionParams($RemAddress, $this->SrcTSap, $RemoteTSAP);
-    return $this->Connect();
-  }
+    public function ConnectTo($RemAddress, $Rack, $Slot) {
+        $RemoteTSAP = ($this->ConnectionType<<8)+($Rack*0x20)+$Slot;
+        $this->SetConnectionParams($RemAddress, $this->SrcTSap, $RemoteTSAP);
+        return $this->Connect();
+    }
 
   /**
    *  @return int
    */
   public function Connect() {
-    $Result = null; //int
     $this->JobStart=SysGetTick();
     $Result = $this->PeerConnect();
     $this->Job->Time=SysGetTick()-$this->JobStart;
+    var_dump($Result);
     return $Result;
   }
 

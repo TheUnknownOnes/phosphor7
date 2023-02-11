@@ -11,5 +11,3 @@ $c->DBRead(7, 0, 12, $buffer); //reads first 12 bytes of DB07
 var_dump(bin2hex($buffer));
 
 $c->Disconnect();
-
-?>

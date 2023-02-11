@@ -309,7 +309,7 @@ class TRawSocketPinger {
     $RSockAddr = null;
     $Reply = new PIcmpReply();
 
-    if (! is_resource($this->FSocket))
+    if (! (is_resource($this->FSocket) || $this->FSocket instanceof Socket))
       return true;
 
     // Init packet
@@ -348,7 +348,7 @@ class TRawSocketPinger {
   }
 
   public function __destruct() {
-    if (is_resource($this->FSocket))
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket)
       socket_close($this->FSocket);
   }
 }
@@ -436,7 +436,7 @@ class TMsgSocket extends TSnapBase {
    *  @return int
    */
   private function GetLastSocketError() {
-    if (is_resource($this->FSocket))
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket)
       return socket_last_error($this->FSocket);
     else
       return socket_last_error();
@@ -454,7 +454,7 @@ class TMsgSocket extends TSnapBase {
   }
 
   private function DestroySocket() {
-    if (is_resource($this->FSocket)) {
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket) {
       if (socket_shutdown($this->FSocket, SD_SEND))
 			$this->Purge();
       socket_close($this->FSocket);
@@ -483,11 +483,11 @@ class TMsgSocket extends TSnapBase {
     $FDread = null;
     $FDexcept = null;
 
-	if(! is_resource($this->FSocket))
+	if(! (is_resource($this->FSocket) || $this->FSocket instanceof Socket))
 		return false;
 
-    $tv_usec = ($Timeout % 1000) * 1000;
-    $tv_sec = $Timeout / 1000;
+    $tv_usec = intval(($Timeout % 1000) * 1000);
+    $tv_sec = intval($Timeout / 1000);
 
     $FDset[] = $this->FSocket;
 
@@ -563,7 +563,7 @@ class TMsgSocket extends TSnapBase {
     $this->DestroySocket();
     $this->LastTcpError=0;
     $this->FSocket =socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-    if (is_resource($this->FSocket))
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket)
       $this->SetSocketOptions();
     else
       $this->LastTcpError =$this->GetLastSocketError();
@@ -708,7 +708,7 @@ class TMsgSocket extends TSnapBase {
     $FDwrite = null;
     $FDexcept = null;
 
-    if(! is_resource($this->FSocket))
+    if(! (is_resource($this->FSocket) || $this->FSocket instanceof Socket))
       return false;
 
     $tv_usec = ($Timeout % 1000) * 1000;
@@ -751,8 +751,8 @@ class TMsgSocket extends TSnapBase {
               $rset[] = $this->FSocket;
               $wset = $rset;
               $eset = null;
-              $tv_sec = $this->PingTimeout / 1000;
-              $tv_usec = ($this->PingTimeout % 1000) * 1000;
+              $tv_sec = intval($this->PingTimeout / 1000);
+              $tv_usec = intval(($this->PingTimeout % 1000) * 1000);
 
               $n = socket_select($rset, $wset, $eset, $tv_sec, $tv_usec);
               if ($n == 0) {
@@ -813,7 +813,7 @@ class TMsgSocket extends TSnapBase {
    *  Disconnects RAW
    */
   public function ForceClose() {
-    if (is_resource($this->FSocket))
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket)
     {
       try {
         socket_close($this->FSocket);
@@ -867,13 +867,13 @@ class TMsgSocket extends TSnapBase {
    */
   public function SetSocket($s) {
     $this->FSocket=$s;
-    if (is_resource($this->FSocket)) {
+    if (is_resource($this->FSocket) || $this->FSocket instanceof Socket) {
       $this->SetSocketOptions();
       $this->GetLocal();
       $this->GetRemote();
       $this->GotSocket();
     }
-    $this->Connected=is_resource($this->FSocket);
+    $this->Connected=is_resource($this->FSocket) || $this->FSocket instanceof Socket;
   }
 
   /**
@@ -884,7 +884,7 @@ class TMsgSocket extends TSnapBase {
     $result = null; //socket_t
     $this->LastTcpError=0;
     $result = socket_accept($this->FSocket, NULL, NULL);
-    if(! is_resource($result))
+    if(! (is_resource($result) || $result instanceof Socket))
         $this->LastTcpError =$this->GetLastSocketError();
     return $result;
   }
@@ -1005,7 +1005,7 @@ class TMsgSocket extends TSnapBase {
     if ($this->LastTcpError==0)
     {
       $BytesRead=socket_recv($this->FSocket, $Data, $Size, MSG_PEEK);
-      if (BytesRead===0)
+      if ($BytesRead===0)
         $this->LastTcpError = WSAECONNRESET;  // Connection reset by Peer
       else
         if ($BytesRead<0)
@@ -1015,7 +1015,7 @@ class TMsgSocket extends TSnapBase {
       if ($this->LastTcpError==WSAETIMEDOUT)
         $this->Purge();
 
-    if (LastTcpError==WSAECONNRESET)
+    if ($this->LastTcpError==WSAECONNRESET)
       $this->Connected =false;
 
     return $this->LastTcpError;
