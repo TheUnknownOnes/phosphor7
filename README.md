@@ -1,3 +1,5 @@
+# moved to https://github.com/PHP-S7/phosphor7
+
 # Phosphor7
 ... is a PHP library for accessing Step7-PLCs from PHP. It is a direct translation of the [Snap7](http://snap7.sourceforge.net) code
 
